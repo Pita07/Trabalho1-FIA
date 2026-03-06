@@ -55,11 +55,30 @@ def simulate(steps=1000,seed=None, policy = None):
 
 #Perceptions
 ##TODO: Defina as suas perceções aqui
+def is_left_of_pad(observation):
+    x = observation[0]
+    return x < -0.2
+
+def is_right_of_pad(observation):
+    x = observation[0]
+    return x > 0.2
+
+def has_stable_orientation(observation):
+    theta = observation[4]
+    return abs(theta) < np.deg2rad(20)
 
 #Actions
 ##TODO: Defina as suas ações aqui
+def go_left():
+    return np.array([-1, 0])
 
+def go_right():
+    return np.array([1, 0])
 
+def go_up():
+    return np.array([0, 1])
+
+    
 def reactive_agent(observation):
     ##TODO: Implemente aqui o seu agente reativo
     ##Substitua a linha abaixo pela sua implementação
@@ -71,7 +90,7 @@ def keyboard_agent(observation):
     action = [0,0] 
     keys = pygame.key.get_pressed()
     
-    print('observação:',observation)
+    #print('observação:',observation)
 
     if keys[pygame.K_UP]:  
         action =+ np.array([1,0])
@@ -86,7 +105,7 @@ def keyboard_agent(observation):
 success = 0.0
 steps = 0.0
 for i in range(EPISODES):
-    st, su = simulate(steps=1000000, policy=reactive_agent)
+    st, su = simulate(steps=1000000, policy=keyboard_agent)
 
     if su:
         steps += st
