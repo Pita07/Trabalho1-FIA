@@ -63,26 +63,120 @@ def is_right_of_pad(observation):
     x = observation[0]
     return x > 0.2
 
+def has_stable_velocity(observation):
+    vy = observation[3]
+    return vy > -0.4
+
 def has_stable_orientation(observation):
     theta = observation[4]
-    return abs(theta) < np.deg2rad(20)
+    return abs(theta) < np.deg2rad(18)
+
+def is_near_starting_point(observation):
+    x = observation[0]
+    y = observation[1]
+    return (-0.2 < x < 0.2) and (1.45 > y > 1.1)
+
+def is_near_landing_pad(observation):
+    x = observation[0]
+    y = observation[1]
+    return (-0.2 < x < 0.2) and (y < 0.3)
+
+def tilted_to_left(observation):
+    theta = observation[4]
+    return 0.01 < theta < 0.1
+
+def tilted_to_right(observation):
+    theta = observation[4]
+    return -0.1 < theta < -0.01
+
+def moving_left(observation):
+    vx = observation[2]
+    return vx < -0.1
+
+def moving_right(observation):
+    vx = observation[2]
+    return vx > 0.1
+
+def has_upwards_momentum(observation):
+    vy = observation[3]
+    return vy > -0.05
 
 #Actions
 ##TODO: Defina as suas ações aqui
 def go_left():
-    return np.array([-1, 0])
+    return np.array([0, -1])
 
 def go_right():
-    return np.array([1, 0])
-
-def go_up():
     return np.array([0, 1])
 
+def go_up():
+    return np.array([1, 0])
+
+def stabilize_right():
+    return np.array([1, 1])
+
+def stabilize_left():
+    return np.array([1, -1])
+
+def stop_left_momentum():
+    return np.array([0.25, 1])
+
+def stop_right_momentum():
+    return np.array([0.25, -1])
+
+
+def production_system(observation):
+    if is_near_starting_point(observation):
+        if not has_upwards_momentum(observation):
+            if tilted_to_left(observation):
+                return stabilize_right()
+            elif tilted_to_right(observation):
+                return stabilize_left()
+            else:
+                return np.array([0, 0])
+        else:
+            return np.array([0, 0])
+    else:
+        return np.array([0, 0])
+
+    # if not is_near_landing_pad(observation):
+    #     if not has_stable_orientation(observation):
+    #         print('go up')
+    #         return go_up()
+    #     else:
+    #         return np.array([0, 0])
+    # else:
+    #     return np.array([0, 0])
+
+    # if moving_left(observation):
+    #     if not tilted_to_right(observation):
+    #         return stop_left_momentum()
+    #     else:
+    #         return stop_right_momentum()
+    # elif moving_right(observation):
+    #     if not tilted_to_left(observation):
+    #         return stop_right_momentum()
+    #     else:
+    #         return stop_left_momentum()
+    # else:
+    #     return np.array([0, 0])  # Manter a posição atual
+
+    # if has_stable_velocity(observation):
+    #     if is_left_of_pad(observation):
+    #         return go_right()
+    #     elif is_right_of_pad(observation):
+    #         return go_left()
+    #     else:
+    #         return np.array([0, 0])  # Manter a posição atual
+    # else:
+    #     return go_up()
     
 def reactive_agent(observation):
     ##TODO: Implemente aqui o seu agente reativo
     ##Substitua a linha abaixo pela sua implementação
-    action = env.action_space.sample()
+    #action = env.action_space.sample()
+    #print('observação:',observation[3])
+    action = production_system(observation)
     return action 
     
     
@@ -105,7 +199,8 @@ def keyboard_agent(observation):
 success = 0.0
 steps = 0.0
 for i in range(EPISODES):
-    st, su = simulate(steps=1000000, policy=keyboard_agent)
+    #st, su = simulate(steps=1000000, policy=keyboard_agent)
+    st, su = simulate(steps=1000000, policy=reactive_agent)
 
     if su:
         steps += st
