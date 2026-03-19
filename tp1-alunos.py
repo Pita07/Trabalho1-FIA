@@ -6,8 +6,8 @@ ENABLE_WIND = True
 WIND_POWER = 15.0
 TURBULENCE_POWER = 0.0
 GRAVITY = -10.0
-RENDER_MODE = 'human'
-#RENDER_MODE = None #seleccione esta opção para não visualizar o ambiente (testes mais rápidos)
+#RENDER_MODE = 'human'
+RENDER_MODE = None #seleccione esta opção para não visualizar o ambiente (testes mais rápidos)
 EPISODES = 1000
 
 CURRENT_POS = 0
@@ -116,7 +116,7 @@ def production_system(observation):
     omega = observation[5]
 
     # --- Inclining control ---
-    target_theta = (0.5 * x + 1.0 * vx)
+    target_theta = (0.75 * x + 1.05 * vx)
 
     target_theta = np.clip(target_theta, -0.4, 0.4)
 
@@ -195,4 +195,3 @@ for i in range(EPISODES):
     if su>0:
         print('Média de passos das aterragens bem sucedidas:', steps/success*100)
     print('Taxa de sucesso:', success/(i+1)*100)
-    
