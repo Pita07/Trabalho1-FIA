@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import pygame
 
-ENABLE_WIND = False
+ENABLE_WIND = True
 WIND_POWER = 15.0
 TURBULENCE_POWER = 0.0
 GRAVITY = -10.0
@@ -137,33 +137,36 @@ def production_system(observation):
     theta = observation[4]
     omega = observation[5]
 
-    # --- CONTROLO DE INCLINAÇÃO (PD simplificado) ---
-    target_theta = -(0.5 * x + 1.0 * vx)
+    # --- Inclining control ---
+    target_theta = (0.5 * x + 1.0 * vx)
+
     target_theta = np.clip(target_theta, -0.4, 0.4)
 
-    # erro angular
-    theta_error = target_theta - theta
+    # 0.05 error margin
+    if target_theta + 0.05 < theta: #inclined to the left
+        side = 1 #fire right engine to correct
+    elif target_theta - 0.05 > theta: #inclined to the right
+        side = -1 #fire left engine to correct
+    else:
+        side = 0 #no need to fire side engines
 
-    # controlo lateral (usa também velocidade angular)
-    side = - (2.0 * theta_error + 0.5 * omega)
+    # --- Height Control ---
+    target_vy = abs(x) -0.4
+    target_vy = np.clip(target_vy, -0.4, 0)
 
-    # --- CONTROLO DE ALTURA ---
-    # queremos reduzir a velocidade de descida
-    target_vy = -0.1 if y < 0.5 else -0.3
+    if vy < target_vy: # if we're falling too fast
+        main = 0.6 #fire main engine to slow down
+    else:
+        main = 0 #no need to fire main engine
 
-    main = 0.8 * (target_vy - vy)
-
-    # reduzir motor se estiver muito inclinado
-    if abs(theta) > 0.3:
-        main *= 0.3
-
-    # --- CLIPPING FINAL ---
-    main = np.clip(main, 0, 1)
-    side = np.clip(side, -1, 1)
-
+    # --- Angular velocity control ---  
+    if omega > 0.3: # if we're rotating too fast to the right
+        side = 1 #fire left engine to correct
+    elif omega < -0.3: # if we're rotating too fast to the left
+        side = -1 #fire right engine to correct
+    
     return np.array([main, side])
 
-    
 def reactive_agent(observation):
     ##TODO: Implemente aqui o seu agente reativo
     ##Substitua a linha abaixo pela sua implementação
