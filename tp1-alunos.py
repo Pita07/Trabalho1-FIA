@@ -10,6 +10,9 @@ RENDER_MODE = 'human'
 #RENDER_MODE = None #seleccione esta opção para não visualizar o ambiente (testes mais rápidos)
 EPISODES = 1000
 
+CURRENT_POS = 0
+TIME_STOPPED = 0
+
 env = gym.make("LunarLander-v3", render_mode =RENDER_MODE, 
     continuous=True, gravity=GRAVITY, 
     enable_wind=ENABLE_WIND, wind_power=WIND_POWER, 
@@ -64,7 +67,7 @@ def is_right_of_pad(observation):
     return x > 0.2
 
 def has_stable_velocity(observation):
-    vy = observation[3]
+    vy = observation[3] 
     return -0.2 < vy
 
 def has_stable_orientation(observation):
@@ -101,32 +104,7 @@ def has_upwards_momentum(observation):
 
 #Actions
 ##TODO: Defina as suas ações aqui
-def go_left():
-    return np.array([0, -1])
 
-def go_right():
-    return np.array([0, 1])
-
-def go_up():
-    return np.array([1, 0])
-
-def stabilize_right():
-    return np.array([0, 1])
-
-def stabilize_left():
-    return np.array([0, -1])
-
-def stop_left_momentum():
-    return np.array([0.25, 1])
-
-def stop_right_momentum():
-    return np.array([0.25, -1])
-
-def adjust_right():
-    return np.array([2.75, 0.65])
-
-def adjust_left():
-    return np.array([2.75, -0.65])
 
 def production_system(observation):
 
@@ -164,7 +142,19 @@ def production_system(observation):
         side = 1 #fire left engine to correct
     elif omega < -0.3: # if we're rotating too fast to the left
         side = -1 #fire right engine to correct
+
+    # --- Check if we're not moving---
+    global CURRENT_POS, TIME_STOPPED
+
+    if y == CURRENT_POS:
+        TIME_STOPPED += 1
+        
+    if TIME_STOPPED > 10: # if we've been stuck for too long
+        main = 1 #fire main engine to try to get unstuck
+        TIME_STOPPED = 0 # reset the counter
     
+    CURRENT_POS = y
+
     return np.array([main, side])
 
 def reactive_agent(observation):
