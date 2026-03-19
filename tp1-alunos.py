@@ -65,21 +65,19 @@ def is_right_of_pad(observation):
 
 def has_stable_velocity(observation):
     vy = observation[3]
-    return vy > -0.4
+    return -0.2 < vy
 
 def has_stable_orientation(observation):
     theta = observation[4]
     return abs(theta) < np.deg2rad(18)
 
 def is_near_starting_point(observation):
-    x = observation[0]
     y = observation[1]
-    return (-0.2 < x < 0.2) and (1.45 > y > 1.1)
+    return (1.45 > y > 1.2)
 
 def is_near_landing_pad(observation):
-    x = observation[0]
     y = observation[1]
-    return (-0.2 < x < 0.2) and (y < 0.3)
+    return y < 0.4
 
 def tilted_to_left(observation):
     theta = observation[4]
@@ -113,10 +111,10 @@ def go_up():
     return np.array([1, 0])
 
 def stabilize_right():
-    return np.array([1, 1])
+    return np.array([0, 1])
 
 def stabilize_left():
-    return np.array([1, -1])
+    return np.array([0, -1])
 
 def stop_left_momentum():
     return np.array([0.25, 1])
@@ -124,52 +122,47 @@ def stop_left_momentum():
 def stop_right_momentum():
     return np.array([0.25, -1])
 
+def adjust_right():
+    return np.array([2.75, 0.65])
+
+def adjust_left():
+    return np.array([2.75, -0.65])
 
 def production_system(observation):
-    if is_near_starting_point(observation):
-        if not has_upwards_momentum(observation):
-            if tilted_to_left(observation):
-                return stabilize_right()
-            elif tilted_to_right(observation):
-                return stabilize_left()
-            else:
-                return np.array([0, 0])
-        else:
-            return np.array([0, 0])
-    else:
-        return np.array([0, 0])
 
-    # if not is_near_landing_pad(observation):
-    #     if not has_stable_orientation(observation):
-    #         print('go up')
-    #         return go_up()
-    #     else:
-    #         return np.array([0, 0])
-    # else:
-    #     return np.array([0, 0])
+    x = observation[0]
+    y = observation[1]
+    vx = observation[2]
+    vy = observation[3]
+    theta = observation[4]
+    omega = observation[5]
 
-    # if moving_left(observation):
-    #     if not tilted_to_right(observation):
-    #         return stop_left_momentum()
-    #     else:
-    #         return stop_right_momentum()
-    # elif moving_right(observation):
-    #     if not tilted_to_left(observation):
-    #         return stop_right_momentum()
-    #     else:
-    #         return stop_left_momentum()
-    # else:
-    #     return np.array([0, 0])  # Manter a posição atual
+    # --- CONTROLO DE INCLINAÇÃO (PD simplificado) ---
+    target_theta = -(0.5 * x + 1.0 * vx)
+    target_theta = np.clip(target_theta, -0.4, 0.4)
 
-    # if has_stable_velocity(observation):
-    #     if is_left_of_pad(observation):
-    #         return go_right()
-    #     elif is_right_of_pad(observation):
-    #         return go_left()
-    #     else:
-    #         return np.array([0, 0])  # Manter a posição atual
-    # else:
-    #     return go_up()
+    # erro angular
+    theta_error = target_theta - theta
+
+    # controlo lateral (usa também velocidade angular)
+    side = - (2.0 * theta_error + 0.5 * omega)
+
+    # --- CONTROLO DE ALTURA ---
+    # queremos reduzir a velocidade de descida
+    target_vy = -0.1 if y < 0.5 else -0.3
+
+    main = 0.8 * (target_vy - vy)
+
+    # reduzir motor se estiver muito inclinado
+    if abs(theta) > 0.3:
+        main *= 0.3
+
+    # --- CLIPPING FINAL ---
+    main = np.clip(main, 0, 1)
+    side = np.clip(side, -1, 1)
+
+    return np.array([main, side])
+
     
 def reactive_agent(observation):
     ##TODO: Implemente aqui o seu agente reativo
