@@ -57,113 +57,101 @@ def simulate(steps=1000,seed=None, policy = None):
 
 
 #Perceptions
-##TODO: Defina as suas perceções aqui
-def is_left_of_pad(observation):
+def is_inclined_to_left(observation):
     x = observation[0]
-    return x < -0.2
-
-def is_right_of_pad(observation):
-    x = observation[0]
-    return x > 0.2
-
-def has_stable_velocity(observation):
-    vy = observation[3] 
-    return -0.2 < vy
-
-def has_stable_orientation(observation):
-    theta = observation[4]
-    return abs(theta) < np.deg2rad(18)
-
-def is_near_starting_point(observation):
-    y = observation[1]
-    return (1.45 > y > 1.2)
-
-def is_near_landing_pad(observation):
-    y = observation[1]
-    return y < 0.4
-
-def tilted_to_left(observation):
-    theta = observation[4]
-    return 0.01 < theta < 0.1
-
-def tilted_to_right(observation):
-    theta = observation[4]
-    return -0.1 < theta < -0.01
-
-def moving_left(observation):
     vx = observation[2]
-    return vx < -0.1
-
-def moving_right(observation):
-    vx = observation[2]
-    return vx > 0.1
-
-def has_upwards_momentum(observation):
-    vy = observation[3]
-    return vy > -0.05
-
-#Actions
-##TODO: Defina as suas ações aqui
-
-
-def production_system(observation):
-
-    x = observation[0]
-    y = observation[1]
-    vx = observation[2]
-    vy = observation[3]
     theta = observation[4]
-    omega = observation[5]
 
-    # --- Inclining control ---
     target_theta = (0.75 * x + 1.05 * vx)
-
     target_theta = np.clip(target_theta, -0.4, 0.4)
 
     # 0.05 error margin
-    if target_theta + 0.05 < theta: #inclined to the left
-        side = 1 #fire right engine to correct
-    elif target_theta - 0.05 > theta: #inclined to the right
-        side = -1 #fire left engine to correct
-    else:
-        side = 0 #no need to fire side engines
+    return target_theta + 0.05 < theta
 
-    # --- Height Control ---
+def is_inclined_to_right(observation):
+    x = observation[0]
+    vx = observation[2]
+    theta = observation[4]
+
+    target_theta = (0.75 * x + 1.05 * vx)
+    target_theta = np.clip(target_theta, -0.4, 0.4)
+
+    # 0.05 error margin
+    return target_theta - 0.05 > theta
+
+def is_falling_too_fast(observation):
+    x = observation[0]
+    vy = observation[3]
+
     target_vy = abs(x) -0.4
     target_vy = np.clip(target_vy, -0.4, 0)
 
-    if vy < target_vy: # if we're falling too fast
-        main = 0.6 #fire main engine to slow down
-    else:
-        main = 0 #no need to fire main engine
+    return vy < target_vy
 
-    # --- Angular velocity control ---  
-    if omega > 0.3: # if we're rotating too fast to the right
-        side = 1 #fire left engine to correct
-    elif omega < -0.3: # if we're rotating too fast to the left
-        side = -1 #fire right engine to correct
+def is_rotating_too_fast_to_left(observation):
+    omega = observation[5]
+    return omega > 0.3
 
-    # --- Check if we're not moving---
+def is_rotating_too_fast_to_right(observation):
+    omega = observation[5]
+    return omega < -0.3
+
+def is_not_moving_on_ground(observation):
     global CURRENT_POS, TIME_STOPPED
+    y = observation[1]
 
     if y == CURRENT_POS:
         TIME_STOPPED += 1
-        
-    if TIME_STOPPED > 10: # if we've been stuck for too long
-        main = 1 #fire main engine to try to get unstuck
-        TIME_STOPPED = 0 # reset the counter
-    
+
     CURRENT_POS = y
 
-    return np.array([main, side])
+    return TIME_STOPPED > 10
+
+#Actions
+def fire_left_engine():
+    return 1
+
+def fire_right_engine():
+    return -1
+
+def fire_main_engine_slow():
+    return 0.6
+
+def fire_main_engine_full():
+    global TIME_STOPPED
+    TIME_STOPPED = 0 # reset the counter
+    return 1
+
+def dont_fire_engine():
+    return 0
+
 
 def reactive_agent(observation):
-    ##TODO: Implemente aqui o seu agente reativo
-    ##Substitua a linha abaixo pela sua implementação
-    #action = env.action_space.sample()
-    #print('observação:',observation[3])
-    action = production_system(observation)
-    return action 
+    # inclination control
+    if is_inclined_to_left(observation):
+        side = fire_left_engine()
+    elif is_inclined_to_right(observation):
+        side = fire_right_engine()
+    else:
+        side = dont_fire_engine()
+
+    # height control
+    if is_falling_too_fast(observation):
+        main = fire_main_engine_slow()
+    else:
+        main = dont_fire_engine()
+
+    # angular velocity control
+    if is_rotating_too_fast_to_left(observation):
+        side = fire_left_engine()
+    elif is_rotating_too_fast_to_right(observation):
+        side = fire_right_engine()
+
+    # check if we are not moving
+    if is_not_moving_on_ground(observation):
+        main = fire_main_engine_full()
+
+    return np.array([main, side])
     
     
 def keyboard_agent(observation):
