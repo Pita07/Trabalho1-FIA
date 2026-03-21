@@ -44,7 +44,7 @@ def check_successful_landing(observation):
 def simulate(steps=1000,seed=None, policy = None):    
     observ, _ = env.reset(seed=seed)
     for step in range(steps):
-        action = policy(observ)
+        action = policy(observ) # type: ignore
 
         observ, _, term, trunc, _ = env.step(action)
 
@@ -141,7 +141,7 @@ def reactive_agent(observation):
     else:
         main = dont_fire_engine()
 
-    # angular velocity control
+    # angular velocity control (takes priority over inclination control)
     if is_rotating_too_fast_to_left(observation):
         side = fire_left_engine()
     elif is_rotating_too_fast_to_right(observation):
