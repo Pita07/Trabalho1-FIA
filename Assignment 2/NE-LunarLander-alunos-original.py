@@ -70,47 +70,13 @@ def check_successful_landing(observation):
     return False
 
 def objective_function(observation_history):
-    """
-    Penalize and Reward observations
-    Some are counted for all the landing process whilst others are only evaluated at the end
-    Weights were given accordingly, they were chosenn thro logical reasoning and trial and error.
-    Maximum fitness: 3.5; Minimum fitness: -7.35
-    """
-    fitness = 0.0
-    for obs in observation_history:
-        x       = obs[0]   # horizontal position   
-        vx      = obs[2]   # horizontal velocity
-        vy      = obs[3]   # vertical velocity
-        theta   = obs[4]   # angle
-        omega   = obs[5]   # angular velocity
-
-        # Penalise horizontal distance from pad
-        if abs(x) > 0.1: fitness -= abs(x) # max -1.5
-
-        # Penalise velocities — smooth, slow approach is better
-        fitness -= 0.2 * abs(vx) # max -1
-        fitness -= 0.25 * abs(vy) # max -1.25
-
-        # Penalise tilt and spin
-        fitness -= 0.35 * abs(theta) # max ~-1.1
-        fitness -= 0.2 * abs(omega) # max -1
-
-    # Normalise by episode length so fitness is comparable
-    # across episodes that terminated at different steps
-    fitness /= len(observation_history)
-
-    last_obs = observation_history[-1]
-    # Penalise vertical distance from pad at the end
-    fitness -= abs(last_obs[1]) # max -1.5
-
-    # Leg contact reward — partial credit for at least touching down
-    fitness += (last_obs[6] + last_obs[7]) * 0.25 # max +0.5
-
-    success = check_successful_landing(last_obs)
-    # Greatly reward a successful landing
-    if success: fitness += 3 
-
-    return fitness, success
+    #TODO: Implement your own objective function
+    #Computes the quality of the individual based 
+    #on the horizontal distance to the landing pad, the vertical velocity and the angle
+    second_to_last_observation = observation_history[-2]
+    x = second_to_last_observation[0]
+    y = second_to_last_observation[1]
+    return -abs(x) - abs(y), check_successful_landing(observation_history[-1])
 
 def simulate(genotype, render_mode = None, seed=None, env = None):
     #Simulates an episode of Lunar Lander, evaluating an individual
@@ -182,32 +148,14 @@ def generate_initial_population():
     return population
 
 def parent_selection(population):
-    """
-    Gaussian (uncorrelated) mutation.
-
-    Each gene is perturbed independently with probability PROB_MUTATION
-    by adding noise drawn from N(0, STD_DEV). This operator explores the
-    neighbourhood of the current point in genotype space rather than
-    making large random jumps.
-
-    PROB_MUTATION = 1/GENOTYPE_SIZE means on average exactly one gene
-    is mutated per individual.
-    """
-    mutant = copy.deepcopy(population)
-    for i in range(GENOTYPE_SIZE):
-        if random.random() < PROB_MUTATION:
-            mutant['genotype'][i] += random.gauss(0, STD_DEV)
-    mutant['fitness'] = None
-    return mutant
+    #TODO
+    #Select an individual from the population
+    return copy.deepcopy(random.choice(population))
 
 def crossover(p1, p2):
-    # 50/50 for each gene 
-    child = copy.deepcopy(p1)
-    for i in range(GENOTYPE_SIZE):
-        if random.random() < 0.5:
-            child['genotype'][i] = p2['genotype'][i]
-    child['fitness'] = None
-    return child
+    #TODO
+    #Create an offspring from the individuals p1 and p2
+    return p1
 
 def mutation(p):
     #TODO
