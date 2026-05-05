@@ -33,10 +33,8 @@ PROB_CROSSOVER = 0.9
 PROB_MUTATION = 1.0/GENOTYPE_SIZE
 STD_DEV = 0.1
 
-ELITE_SIZE = 1
 
-# Tournament size for parent selection.
-TOURNAMENT_SIZE = 3
+ELITE_SIZE = 1
 
 def network(shape, observation,ind):
     #Computes the output of the neural network given the observation and the genotype
@@ -46,7 +44,7 @@ def network(shape, observation,ind):
         for j in range(shape[i]):
             for k in range(len(x)):
                 y[j] += x[k]*ind[k+j*len(x)]
-        x = np.tanh(y) # returns a value inbetween -1 and 1 for each engine (main, lateral)
+        x = np.tanh(y)
     return x
 
 def check_successful_landing(observation):
@@ -76,7 +74,7 @@ def objective_function(observation_history):
     second_to_last_observation = observation_history[-2]
     x = second_to_last_observation[0]
     y = second_to_last_observation[1]
-    return -abs(x) - abs(y), check_successful_landing(observation_history[-1])
+    return -abs(x) - abs(y), check_successful_landing(observation_history[-2])
 
 def simulate(genotype, render_mode = None, seed=None, env = None):
     #Simulates an episode of Lunar Lander, evaluating an individual

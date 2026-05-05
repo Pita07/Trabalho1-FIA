@@ -99,16 +99,16 @@ def objective_function(observation_history):
     # across episodes that terminated at different steps
     fitness /= len(observation_history)
 
-    last_obs = observation_history[-1]
+    last_obs = observation_history[-2]
     # Penalise vertical distance from pad at the end
     fitness -= abs(last_obs[1]) # max -1.5
 
     # Leg contact reward — partial credit for at least touching down
-    fitness += (last_obs[6] + last_obs[7]) * 0.25 # max +0.5
+    fitness += (last_obs[6] + last_obs[7]) * 4 # max +0.5
 
     success = check_successful_landing(last_obs)
     # Greatly reward a successful landing
-    if success: fitness += 3 
+    if success: fitness += 20
 
     return fitness, success
 
@@ -183,22 +183,12 @@ def generate_initial_population():
 
 def parent_selection(population):
     """
-    Gaussian (uncorrelated) mutation.
-
-    Each gene is perturbed independently with probability PROB_MUTATION
-    by adding noise drawn from N(0, STD_DEV). This operator explores the
-    neighbourhood of the current point in genotype space rather than
-    making large random jumps.
-
-    PROB_MUTATION = 1/GENOTYPE_SIZE means on average exactly one gene
-    is mutated per individual.
+    Select the best fitness in between k(Tournament size) random individuals
+    This gurantees variability whilst keeping selection pressure
     """
-    mutant = copy.deepcopy(population)
-    for i in range(GENOTYPE_SIZE):
-        if random.random() < PROB_MUTATION:
-            mutant['genotype'][i] += random.gauss(0, STD_DEV)
-    mutant['fitness'] = None
-    return mutant
+    tournament = random.sample(population, TOURNAMENT_SIZE)
+    winner = max(tournament, key=lambda ind: ind['fitness'])
+    return copy.deepcopy(winner)
 
 def crossover(p1, p2):
     # 50/50 for each gene 
@@ -210,9 +200,24 @@ def crossover(p1, p2):
     return child
 
 def mutation(p):
-    #TODO
-    #Mutate the individual p
-    return p    
+    """
+    Gaussian (uncorrelated) mutation.
+
+    Each gene is perturbed independently with probability PROB_MUTATION
+    by adding noise drawn from N(0, STD_DEV). This operator explores the
+    neighbourhood of the current point in genotype space rather than
+    making large random jumps.
+
+    PROB_MUTATION = 1/GENOTYPE_SIZE means on average exactly one gene
+    is mutated per individual.
+    """
+    mutant = copy.deepcopy(p)
+    for i in range(GENOTYPE_SIZE):
+        if random.random() < PROB_MUTATION:
+            mutant['genotype'][i] += random.gauss(0, STD_DEV)
+            mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i]))
+    mutant['fitness'] = None
+    return mutant
     
 def survival_selection(population, offspring):
     #reevaluation of the elite
@@ -287,7 +292,7 @@ if __name__ == '__main__':
 
     #Pick a setting from below
     #--to evolve the controller--    
-    evolve = True
+    evolve = False
     render_mode = None
 
     #--to test the evolved controller without visualisation--
@@ -298,10 +303,10 @@ if __name__ == '__main__':
     #evolve = False
     #render_mode = 'human'
     
-    
+    n_runs = 10
+
     if evolve:
         #evolve individuals
-        n_runs = 5
         seeds = [964, 952, 364, 913, 140, 726, 112, 631, 881, 844, 965, 672, 335, 611, 457, 591, 551, 538, 673, 437, 513, 893, 709, 489, 788, 709, 751, 467, 596, 976]
         for i in range(n_runs):    
             random.seed(seeds[i])
@@ -313,21 +318,23 @@ if __name__ == '__main__':
                 
     else:
         #test evolved individuals
-        #pick the file to test
-        filename = 'log0.txt'
-        bests = load_bests(filename)
-        b = bests[-1]
-        SHAPE = b[1]
-        ind = b[2]
-            
-        ind = {'genotype': ind, 'fitness': None}
-            
-            
-        ntests = TEST_EPISODES
+        for j in range (n_runs):
+            filename = 'log' + str(j) + '.txt'
+            bests = load_bests(filename)
+            b = bests[-1]
+            SHAPE = b[1]
+            ind = b[2]
+                
+            ind = {'genotype': ind, 'fitness': None}
+                
+                
+            ntests = TEST_EPISODES
 
-        fit, success = 0, 0
-        for i in range(1,ntests+1):
-            f, s = simulate(ind['genotype'], render_mode=render_mode, seed = None)
-            fit += f
-            success += s
-        print(fit/ntests, success/ntests)
+            fit, success = 0, 0
+            for i in range(1,ntests+1):
+                f, s = simulate(ind['genotype'], render_mode=render_mode, seed = None)
+                fit += f
+                success += s
+
+            print('Log ' + str(j) + ':')
+            print(fit/ntests, (success/ntests)* 100) # for better interpretation 
