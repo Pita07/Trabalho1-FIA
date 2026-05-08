@@ -14,7 +14,7 @@ RENDER_MODE = 'human'
 TEST_EPISODES = 1000
 STEPS = 500
 
-NUM_PROCESSES = os.cpu_count() or 1
+NUM_PROCESSES = int(os.cpu_count()) # type: ignore
 evaluationQueue = Queue()
 evaluatedQueue = Queue()
 
@@ -26,16 +26,16 @@ GENOTYPE_SIZE = 0
 for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
-POPULATION_SIZE = 100
+POPULATION_SIZE = 200
 NUMBER_OF_GENERATIONS = 100
 PROB_CROSSOVER = 0.9
 
-PROB_MUTATION = 1.0/GENOTYPE_SIZE
+PROB_MUTATION = 1.0/GENOTYPE_SIZE # averages one mutation per individual
 STD_DEV = 0.1
-
 
 ELITE_SIZE = 1
 
+# Tournament size for parent selection.
 TOURNAMENT_SIZE = 3
 
 def network(shape, observation,ind):
@@ -46,7 +46,7 @@ def network(shape, observation,ind):
         for j in range(shape[i]):
             for k in range(len(x)):
                 y[j] += x[k]*ind[k+j*len(x)]
-        x = np.tanh(y)
+        x = np.tanh(y) # returns a value inbetween -1 and 1 for each engine (main, lateral)
     return x
 
 def check_successful_landing(observation):
@@ -69,10 +69,16 @@ def check_successful_landing(observation):
         return True
     return False
 
-
 def objective_function(observation_history):
-    # Vamos avaliar o estado no momento em que o episódio termina
+    """
+    Penalize and Reward observations
+    After multiple trys we found it to be best to evaluate fitness only at the end (last observation).
+    Weights were given to each behaviour accordingly, they were chosenn thro logical reasoning and trial and error.
+    Maximum fitness: 102
+    """
+    fitness = 0.0
     last_obs = observation_history[-1]
+    success = check_successful_landing(last_obs)
     
     x = last_obs[0]
     y = last_obs[1]
@@ -83,21 +89,17 @@ def objective_function(observation_history):
     left_leg = last_obs[6]
     right_leg = last_obs[7]
     
-    dist_penalty = (x**2 + y**2) * 20.0
-    
-    vel_penalty = (vx**2 + vy**2) * 100.0
+    # Rewards 
+    fitness += (left_leg + right_leg) # leg contact reward
+    # Greatly reward a successful landing
+    if success: fitness += 100
 
-    pose_penalty = (theta**2 + v_theta**2) * 50.0
-    
-    leg_bonus = (left_leg + right_leg) * 10.0
-    
-    fitness = leg_bonus - dist_penalty - vel_penalty - pose_penalty
-    
-    success = check_successful_landing(last_obs)
-    if success:
-        fitness += 1000.0  
+    # Penalizations
+    fitness -= (x**2 + y**2) * 2 # distance penalisation
+    fitness -= (vx**2 + vy**2) * 10 # velocity penalisation
+    fitness -= (theta**2+ v_theta**2) * 5 # angle penalisation
+
     return fitness, success
-
 
 def simulate(genotype, render_mode = None, seed=None, env = None):
     #Simulates an episode of Lunar Lander, evaluating an individual
@@ -168,8 +170,6 @@ def generate_initial_population():
         population.append({'genotype': genotype, 'fitness': None})
     return population
 
-#--------------- TO DO -----------------#
-
 def parent_selection(population):
     """
     Select the best fitness in between k(Tournament size) random individuals
@@ -179,8 +179,6 @@ def parent_selection(population):
     winner = max(tournament, key=lambda ind: ind['fitness'])
     return copy.deepcopy(winner)
 
-#--------------- TO DO -----------------#
-
 def crossover(p1, p2):
     # 50/50 for each gene 
     child = copy.deepcopy(p1)
@@ -189,8 +187,6 @@ def crossover(p1, p2):
             child['genotype'][i] = p2['genotype'][i]
     child['fitness'] = None
     return child
-
-#--------------- TO DO -----------------#
 
 def mutation(p):
     """
@@ -211,7 +207,7 @@ def mutation(p):
             mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i]))
     mutant['fitness'] = None
     return mutant
-
+    
 def survival_selection(population, offspring):
     #reevaluation of the elite
     offspring.sort(key = lambda x: x['fitness'], reverse=True)
@@ -219,8 +215,7 @@ def survival_selection(population, offspring):
     new_population = p + offspring[ELITE_SIZE:]
     new_population.sort(key = lambda x: x['fitness'], reverse=True)
     return new_population    
-
-
+        
 def evolution():
     #Create evaluation processes
     evaluation_processes = []
@@ -286,9 +281,9 @@ if __name__ == '__main__':
 
     # Personalized Settings   
     evolve = False
+    #render_mode = 'human'
     render_mode = None
     both = True
-    #render_mode = 'human'
     
     n_runs = 5
 

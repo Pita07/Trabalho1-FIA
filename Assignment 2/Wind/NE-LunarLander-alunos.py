@@ -6,7 +6,7 @@ import os
 from multiprocessing import Process, Queue
 
 # CONFIG
-ENABLE_WIND = False
+ENABLE_WIND = True
 WIND_POWER = 15.0
 TURBULENCE_POWER = 0.0
 GRAVITY = -10.0
@@ -26,8 +26,8 @@ GENOTYPE_SIZE = 0
 for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
-POPULATION_SIZE = 100
-NUMBER_OF_GENERATIONS = 100
+POPULATION_SIZE = 200
+NUMBER_OF_GENERATIONS = 80
 PROB_CROSSOVER = 0.9
 
 PROB_MUTATION = 1.0/GENOTYPE_SIZE
@@ -72,43 +72,32 @@ def check_successful_landing(observation):
 def objective_function(observation_history):
     """
     Penalize and Reward observations
-    Some are counted for all the landing process whilst others are only evaluated at the end
-    Weights were given accordingly, they were chosenn thro logical reasoning and trial and error.
-    Maximum fitness: 3.5; Minimum fitness: -7.35
+    After multiple trys we found it to be best to evaluate fitness only at the end (last observation).
+    Weights were given to each behaviour accordingly, they were chosenn thro logical reasoning and trial and error.
+    Maximum fitness: 1020
     """
     fitness = 0.0
-    for obs in observation_history:
-        x       = obs[0]   # horizontal position   
-        vx      = obs[2]   # horizontal velocity
-        vy      = obs[3]   # vertical velocity
-        theta   = obs[4]   # angle
-        omega   = obs[5]   # angular velocity
-
-        # Penalise horizontal distance from pad
-        if abs(x) > 0.1: fitness -= abs(x) # max -1.5
-
-        # Penalise velocities — smooth, slow approach is better
-        fitness -= 0.2 * abs(vx) # max -1
-        fitness -= 0.25 * abs(vy) # max -1.25
-
-        # Penalise tilt and spin
-        fitness -= 0.35 * abs(theta) # max ~-1.1
-        fitness -= 0.2 * abs(omega) # max -1
-
-    # Normalise by episode length so fitness is comparable
-    # across episodes that terminated at different steps
-    fitness /= len(observation_history)
-
-    last_obs = observation_history[-2]
-    # Penalise vertical distance from pad at the end
-    fitness -= abs(last_obs[1]) # max -1.5
-
-    # Leg contact reward — partial credit for at least touching down
-    fitness += (last_obs[6] + last_obs[7]) * 4 # max +0.5
-
+    last_obs = observation_history[-1]
     success = check_successful_landing(last_obs)
+    
+    x = last_obs[0]
+    y = last_obs[1]
+    vx = last_obs[2]
+    vy = last_obs[3]
+    theta = last_obs[4]
+    v_theta = last_obs[5]
+    left_leg = last_obs[6]
+    right_leg = last_obs[7]
+    
+    # Rewards 
+    fitness += (left_leg + right_leg) * 10.0 # leg contact reward
     # Greatly reward a successful landing
-    if success: fitness += 20
+    if success: fitness += 1000
+
+    # Penalizations
+    fitness -= (x**2 + y**2) * 20.0 # distance penalisation
+    fitness -= (vx**2 + vy**2) * 100.0 # velocity penalisation
+    fitness -= (theta**2+ v_theta**2) * 50.0 # angle penalisation
 
     return fitness, success
 
@@ -290,22 +279,15 @@ def load_bests(fname):
 
 if __name__ == '__main__':
 
-    #Pick a setting from below
-    #--to evolve the controller--    
+    # Personalized Settings   
     evolve = False
     render_mode = None
-
-    #--to test the evolved controller without visualisation--
-    #evolve = False
-    #render_mode = None
-
-    #--to test the evolved controller with visualisation--
-    #evolve = False
+    both = True
     #render_mode = 'human'
     
-    n_runs = 10
+    n_runs = 5
 
-    if evolve:
+    if evolve or both:
         #evolve individuals
         seeds = [964, 952, 364, 913, 140, 726, 112, 631, 881, 844, 965, 672, 335, 611, 457, 591, 551, 538, 673, 437, 513, 893, 709, 489, 788, 709, 751, 467, 596, 976]
         for i in range(n_runs):    
@@ -316,7 +298,7 @@ if __name__ == '__main__':
                     f.write(f'{b[1]}\t{SHAPE}\t{b[0]}\n')
 
                 
-    else:
+    if not evolve or both:
         #test evolved individuals
         for j in range (n_runs):
             filename = 'log' + str(j) + '.txt'

@@ -1,0 +1,42 @@
+def objective_function(observation_history):
+    """
+    Penalize and Reward observations
+    After multiple trys we found it to be best to evaluate fitness only at the end (last observation).
+    Weights were given to each behaviour accordingly, they were chosenn thro logical reasoning and trial and error.
+    Maximum fitness: 1020
+    """
+    fitness = 0.0
+    for obs in observation_history:
+        x       = obs[0]   # horizontal position   
+        vx      = obs[2]   # horizontal velocity
+        vy      = obs[3]   # vertical velocity
+        theta   = obs[4]   # angle
+        omega   = obs[5]   # angular velocity
+
+        # Penalise horizontal distance from pad
+        if abs(x) > 0.1: fitness -= abs(x) # max -1.5
+
+        # Penalise velocities — smooth, slow approach is better
+        fitness -= 0.2 * abs(vx) # max -1
+        fitness -= 0.25 * abs(vy) # max -1.25
+
+        # Penalise tilt and spin
+        fitness -= 0.35 * abs(theta) # max ~-1.1
+        fitness -= 0.2 * abs(omega) # max -1
+
+    # Normalise by episode length so fitness is comparable
+    # across episodes that terminated at different steps
+    fitness /= len(observation_history)
+
+    last_obs = observation_history[-2]
+    # Penalise vertical distance from pad at the end
+    fitness -= abs(last_obs[1]) # max -1.5
+
+    # Leg contact reward — partial credit for at least touching down
+    fitness += (last_obs[6] + last_obs[7]) * 4 # max +0.5
+
+    success = check_successful_landing(last_obs)
+    # Greatly reward a successful landing
+    if success: fitness += 20
+
+    return fitness, success
