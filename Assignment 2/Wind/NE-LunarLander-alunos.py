@@ -26,11 +26,11 @@ GENOTYPE_SIZE = 0
 for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
-POPULATION_SIZE = 200
-NUMBER_OF_GENERATIONS = 80
+POPULATION_SIZE = 150 # more genetic diversity
+NUMBER_OF_GENERATIONS = 125 # we found this to be the value where the average fitness would stagnate
 PROB_CROSSOVER = 0.9
 
-PROB_MUTATION = 1.0/GENOTYPE_SIZE
+PROB_MUTATION = 1.0/GENOTYPE_SIZE # averages one mutation per individual
 STD_DEV = 0.1
 
 ELITE_SIZE = 1
@@ -74,7 +74,7 @@ def objective_function(observation_history):
     Penalize and Reward observations
     After multiple trys we found it to be best to evaluate fitness only at the end (last observation).
     Weights were given to each behaviour accordingly, they were chosenn thro logical reasoning and trial and error.
-    Maximum fitness: 1020
+    Maximum fitness: 102
     """
     fitness = 0.0
     last_obs = observation_history[-1]
@@ -90,14 +90,15 @@ def objective_function(observation_history):
     right_leg = last_obs[7]
     
     # Rewards 
-    fitness += (left_leg + right_leg) * 10.0 # leg contact reward
+    fitness += (left_leg + right_leg) # leg contact reward
     # Greatly reward a successful landing
-    if success: fitness += 1000
+    if success: fitness += 100
 
     # Penalizations
-    fitness -= (x**2 + y**2) * 20.0 # distance penalisation
-    fitness -= (vx**2 + vy**2) * 100.0 # velocity penalisation
-    fitness -= (theta**2+ v_theta**2) * 50.0 # angle penalisation
+    fitness -= (x**2 + y**2) * 2 # distance penalisation
+    fitness -= (vx**2) * 45 # heavy horizontal velocity penalisation
+    fitness -= (vy**2) * 15 # vertical velocity penalisation
+    fitness -= (theta**2+ v_theta**2) * 15 # angle penalisation
 
     return fitness, success
 
@@ -204,7 +205,8 @@ def mutation(p):
     for i in range(GENOTYPE_SIZE):
         if random.random() < PROB_MUTATION:
             mutant['genotype'][i] += random.gauss(0, STD_DEV)
-            mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i]))
+            # keep gene values in [-1, 1] to fit initalization bounds and to avoid extreme values that could destabilize the network
+            mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i])) 
     mutant['fitness'] = None
     return mutant
     
@@ -257,7 +259,8 @@ def evolution():
         #Print and save the best of the current generation
         best = (population[0]['genotype']), population[0]['fitness']
         bests.append(best)
-        print(f'Best of generation {gen}: {best[1]}')
+        avg_fitness = sum(ind['fitness'] for ind in population) / len(population)
+        print(f'Generation {gen}: Best: {best[1]}, Average: {avg_fitness}')
 
     #Stop evaluation processes
     for i in range(NUM_PROCESSES):
@@ -281,9 +284,9 @@ if __name__ == '__main__':
 
     # Personalized Settings   
     evolve = False
+    #render_mode = 'human'
     render_mode = None
     both = True
-    #render_mode = 'human'
     
     n_runs = 5
 

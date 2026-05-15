@@ -26,8 +26,8 @@ GENOTYPE_SIZE = 0
 for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
-POPULATION_SIZE = 200
-NUMBER_OF_GENERATIONS = 100
+POPULATION_SIZE = 150 # more genetic diversity
+NUMBER_OF_GENERATIONS = 115 # we found this to be the value where the average fitness would stagnate
 PROB_CROSSOVER = 0.9
 
 PROB_MUTATION = 1.0/GENOTYPE_SIZE # averages one mutation per individual
@@ -96,8 +96,8 @@ def objective_function(observation_history):
 
     # Penalizations
     fitness -= (x**2 + y**2) * 2 # distance penalisation
-    fitness -= (vx**2 + vy**2) * 10 # velocity penalisation
-    fitness -= (theta**2+ v_theta**2) * 5 # angle penalisation
+    fitness -= (vx**2 + vy**2) * 15 # velocity penalisation
+    fitness -= (theta**2+ v_theta**2) * 15 # angle penalisation
 
     return fitness, success
 
@@ -204,7 +204,8 @@ def mutation(p):
     for i in range(GENOTYPE_SIZE):
         if random.random() < PROB_MUTATION:
             mutant['genotype'][i] += random.gauss(0, STD_DEV)
-            mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i]))
+            # keep gene values in [-1, 1] to fit initalization bounds and to avoid extreme values that could destabilize the network
+            mutant['genotype'][i] = max(-1.0, min(1.0, mutant['genotype'][i])) 
     mutant['fitness'] = None
     return mutant
     
@@ -257,7 +258,8 @@ def evolution():
         #Print and save the best of the current generation
         best = (population[0]['genotype']), population[0]['fitness']
         bests.append(best)
-        print(f'Best of generation {gen}: {best[1]}')
+        avg_fitness = sum(ind['fitness'] for ind in population) / len(population)
+        print(f'Generation {gen}: Best: {best[1]}, Average: {avg_fitness}')
 
     #Stop evaluation processes
     for i in range(NUM_PROCESSES):
