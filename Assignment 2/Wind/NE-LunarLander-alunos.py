@@ -27,7 +27,7 @@ for i in range(1, len(SHAPE)):
     GENOTYPE_SIZE += SHAPE[i-1]*SHAPE[i]
 
 POPULATION_SIZE = 150 # more genetic diversity
-NUMBER_OF_GENERATIONS = 125 # we found this to be the value where the average fitness would stagnate
+NUMBER_OF_GENERATIONS = 140 # we found this to be the value where the average fitness would stagnate
 PROB_CROSSOVER = 0.9
 
 PROB_MUTATION = 1.0/GENOTYPE_SIZE # averages one mutation per individual
@@ -90,15 +90,14 @@ def objective_function(observation_history):
     right_leg = last_obs[7]
     
     # Rewards 
-    fitness += (left_leg + right_leg) # leg contact reward
+    fitness += (left_leg + right_leg) * 1.5 # leg contact reward
     # Greatly reward a successful landing
     if success: fitness += 100
 
     # Penalizations
-    fitness -= (x**2 + y**2) * 2 # distance penalisation
-    fitness -= (vx**2) * 45 # heavy horizontal velocity penalisation
-    fitness -= (vy**2) * 15 # vertical velocity penalisation
-    fitness -= (theta**2+ v_theta**2) * 15 # angle penalisation
+    fitness -= (x**2 + y**2) * 1.5 # distance penalisation
+    fitness -= (vx**2 + vy**2) * 15 # velocity penalisation
+    fitness -= (theta**2+ v_theta**2) * 8 # angle penalisation
 
     return fitness, success
 
